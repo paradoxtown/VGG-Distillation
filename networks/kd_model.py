@@ -1,17 +1,15 @@
 import utils.parallel as parallel
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
-import torch
 import networks.net as net
-import networks.gan as gan
-from utils.utils import *
+# from utils.utils import *
 from utils.criterion import *
 
 
 class NetModel:
     @staticmethod
     def name():
-        return 'kd_seg'
+        return 'kd_class'
 
     @staticmethod
     def data_parallel_model_process(model, is_eval='train', device='cuda'):
@@ -37,48 +35,36 @@ class NetModel:
         self.args = args
         device = args.device
 
-        student = net.SimpleNet()
+        student_arch = [32, 32, 32, 'M', 48, 48, 48, 48, 'M', 64, 64, 64, 64, 'M']
+        student = net.SimpleNet(student_arch, args.num_classes)
         load_s_model(args, student, False)
         print_model_parm_nums(student, 'student_model')
         self.parallel_student = self.data_parallel_model_process(student, 'train', device)
         self.student = student
 
-        net_arch16 = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M5', "FC1",
-                      "FC2", "FC"]
-        teacher = net.VGGNet(net_arch16, args.num_classes)
+        teacher_arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
+        teacher = net.VGGNet(teacher_arch, args.num_classes)
         load_t_model(teacher, args.T_ckpt_path)
         print_model_parm_nums(teacher, 'teacher_model')
         self.parallel_teacher = self.data_parallel_model_process(teacher, 'eval', device)
         self.teacher = teacher
 
-        d_model = gan.Discriminator()
-        load_d_model(args, d_model, False)
-        print_model_parm_nums(d_model, 'd_model')
-        self.parallel_d = self.data_parallel_model_process(d_model, 'train', device)
-
         # todo
         self.G_solver = optim.SGD({'params': filter(lambda p: p.requires_grad, self.student.parameters()),
                                    'initial_lr': args.lr_g},
                                   args.lr_g, momentum=args.momentum, weight_decay=args.weight_decay)
-        self.D_solver = optim.SGD({'params': filter(lambda p: p.requires_grad, d_model.parameters()),
-                                   'initial_lr': args.lr_d},
-                                  args.lr_d, momentum=args.momentum, weight_decay=args.weight_decay)
 
-        self.best_mean_IU = args.best_mean_IU
-
-        # criterion cross entropy
-        self.criterion = self.data_parallel_criterion_process(CriterionDSN())
+        # criterion cross entropy + soft-target distribution + pair-wise + pixel-wise
+        self.criterion = self.data_parallel_criterion_process(nn.CrossEntropyLoss())
+        self.criterion_for_distribution = self.data_parallel_criterion_process(CriterionForDistribution())
         self.criterion_pixel_wise = self.data_parallel_criterion_process(CriterionPixelWise())
-        self.criterion_pair_wise = self.data_parallel_criterion_process(CriterionPairWiseForWholeFeatAfterPool())
-        self.criterion_adv = self.data_parallel_criterion_process(CriterionAdv())
-        if args.adv_loss_type == 'wgan-gp':
-            self.criterion_AdditionalGP = self.data_parallel_criterion_process(CriterionAdditionalGP())
-        self.criterion_adv_for_G = self.data_parallel_criterion_process(CriterionAdvForG())
+        self.criterion_pair_wise = \
+            self.data_parallel_criterion_process(CriterionPairWiseForWholeFeatAfterPool(args.scale, -1))
 
         self.mc_G_loss = 0.0
         self.pi_G_loss = 0.0
         self.pa_G_loss = 0.0
-        self.D_loss = 0.0
+        self.ho_G_loss = 0.0
 
         cudnn.benchmark = True
         if not os.path.exists(args.snapshot_dir):
@@ -88,16 +74,16 @@ class NetModel:
         self.labels = None
         self.preds_t = None
         self.preds_s = None
+        self.g_loss = None
 
     def set_input(self, data):
-        # args = self.args
         images, labels, _, _ = data
         self.images = images.cuda()
         self.labels = labels.long().cuda()
 
     @staticmethod
-    def lr_poly(base_lr, iter, max_iter, power):
-        return base_lr * ((1 - float(iter) / max_iter) ** power)
+    def lr_poly(base_lr, iteration, max_iter, power):
+        return base_lr * ((1 - float(iteration) / max_iter) ** power)
 
     def adjust_learning_rate(self, base_lr, optimizer, i_iter):
         args = self.args
@@ -112,13 +98,33 @@ class NetModel:
         self.preds_s = self.parallel_student.train()(self.images, parallel=args.parallel)
 
     def student_backward(self):
-        pass
-
-    def discriminator_backward(self):
-        pass
+        args = self.args
+        g_loss = 0.0
+        temp = self.criterion(self.preds_s, self.labels, is_target_scattered=False)
+        # temp_t = self.criterion(self.preds_t, self.labels, is_target_scattered=False)
+        self.mc_G_loss = temp.item()
+        g_loss += temp
+        if args.pi:
+            temp = args.lambda_pi * self.criterion_pixel_wise(self.preds_s, self.preds_t, is_target_scattered=True)
+            self.pi_G_loss = temp.item()
+            g_loss += temp
+        if args.pa:
+            # todo
+            temp1 = self.criterion_pair_wise(self.preds_s, self.preds_t, is_target_scattered=True)
+            self.pa_G_loss = temp1.item()
+            g_loss = g_loss + args.labda_pa * temp1
+        if args.ho:
+            temp2 = self.criterion_for_distribution(self.preds_s, self.preds_t)
+            self.ho_G_loss = temp2.item()
+            g_loss = g_loss + args.labda_ho * temp2
+        g_loss.backward()
+        self.g_loss = g_loss.item()
 
     def optimize_parameters(self):
-        pass
+        self.forward()
+        self.G_solver.zero_grad()
+        self.student_backward()
+        self.G_solver.step()
 
     def evaluate_model(self):
         pass

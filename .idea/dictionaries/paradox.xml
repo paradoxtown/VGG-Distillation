@@ -3,8 +3,10 @@
     <words>
       <w>cityscapes</w>
       <w>ckpt</w>
+      <w>conv</w>
       <w>cuda</w>
       <w>preds</w>
+      <w>softmax</w>
     </words>
   </dictionary>
 </component>

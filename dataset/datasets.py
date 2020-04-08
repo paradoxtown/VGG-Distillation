@@ -1,10 +1,14 @@
 from torch.utils import data
+import torchvision
 import numpy as np
 import logging
 import random
 import math
-import os
 import cv2
+import torchvision.transforms as transforms
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class CSDataSet(data.Dataset):
@@ -32,9 +36,9 @@ class CSDataSet(data.Dataset):
             img_file = os.path.join(self.root, image_path)
             label_file = os.path.join(self.root, label_path)
             self.files.append({
-                "img":   img_file,
+                "img": img_file,
                 "label": label_file,
-                "name":  name
+                "name": name
             })
         self.id2train_id = {-1: ignore_label, 0: ignore_label, 1: ignore_label, 2: ignore_label,
                             3: ignore_label, 4: ignore_label, 5: ignore_label, 6: ignore_label,
@@ -99,8 +103,8 @@ class CSDataSet(data.Dataset):
         h_off = random.randint(0, img_h - self.crop_h)
         w_off = random.randint(0, img_w - self.crop_w)
         self.logger.info("======> h_off: {}, w_off: {}".format(h_off, w_off))
-        image = np.asarray(image_pad[h_off: h_off+self.crop_h, w_off: w_off+self.crop_w], np.float32)
-        label = np.asarray(label_pad[h_off: h_off+self.crop_h, w_off: w_off+self.crop_w], np.float32)
+        image = np.asarray(image_pad[h_off: h_off + self.crop_h, w_off: w_off + self.crop_w], np.float32)
+        label = np.asarray(label_pad[h_off: h_off + self.crop_h, w_off: w_off + self.crop_w], np.float32)
         self.logger.info("======> image size after offset: {} ".format(image.shape))
         # self.logger.info("======> image after offset \n" + str(image))
         image = image.transpose((2, 0, 1))
@@ -113,7 +117,9 @@ class CSDataSet(data.Dataset):
             label = label[:, ::flip]
             self.logger.info("======> image size after flip: {} ".format(image.shape))
             # self.logger.info("======> image after flip \n" + str(image))
-
+        self.logger.info("======> label size: {} \n".format(label.shape))
+        self.logger.info("======> image \n" + str(image))
+        self.logger.info("======> label \n" + str(label))
         return image.copy(), label.copy(), np.array(size), name
 
 
@@ -122,3 +128,15 @@ if __name__ == '__main__':
     dataset = CSDataSet(root='../../', list_path='./list/cityscapes/train.lst', max_iter=40000 * 8,
                         crop_size=(512, 512), mean=IMG_MEAN)
     dataset.__getitem__(0)
+    # CIFar10path = '../../'
+    # transform = transforms.Compose([transforms.ToTensor()])
+    # train_dataset = torchvision.datasets.CIFAR10(root=CIFar10path,
+    #                                              train=True,
+    #                                              transform=transform,
+    #                                              download=False)
+    # train_loader = data.DataLoader(dataset=train_dataset, batch_size=32, shuffle=True)
+    # data_iter = iter(train_loader)
+    # images, labels = next(data_iter)
+    # index = 15
+    # print(images[index].numpy())
+    # print(labels[index].numpy())
