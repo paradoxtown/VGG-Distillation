@@ -79,7 +79,7 @@ class VGGNet(nn.Module):
         self.restore = nn.Sequential(*up_layers)
 
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=128 * 4 * 4, out_features=4096),
+            nn.Linear(in_features=2048, out_features=256),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(256, 256),
@@ -94,7 +94,9 @@ class VGGNet(nn.Module):
         arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
         """
         feature = self.feature(input_data)
-        soft_result = self.classifier(feature)
+        feature_ = feature.view(-1, 2048)
+        print(feature_.shape)
+        soft_result = self.classifier(feature_)
         restore = self.restore(feature)
         return [feature, soft_result, restore]
 
