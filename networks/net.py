@@ -17,7 +17,7 @@ class SimpleNet(nn.Module):
                 s_layers += [nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))]
             else:
                 conv2d = nn.Conv2d(in_channels=in_channel, out_channels=cfg, kernel_size=3, padding=1)
-                s_layers += [conv2d, nn.ReLU(inplace=True)]
+                s_layers += [conv2d, nn.BatchNorm2d(cfg), nn.ReLU(inplace=True)]
                 in_channel = cfg
 
         self.feature = nn.Sequential(*s_layers)
@@ -54,16 +54,16 @@ class VGGNet(nn.Module):
     def __init__(self, cfgs, num_classes):
         super(VGGNet, self).__init__()
         self.num_classes = num_classes
-        vgg_layers = []
-        in_channel = 3
 
         # down sampling
+        vgg_layers = []
+        in_channel = 3
         for cfg in cfgs:
             if cfg == 'M':
                 vgg_layers += [nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))]
             else:
                 conv2d = nn.Conv2d(in_channels=in_channel, out_channels=cfg, kernel_size=3, padding=1)
-                vgg_layers += [conv2d, nn.ReLU(inplace=True)]
+                vgg_layers += [conv2d, nn.BatchNorm2d(cfg), nn.ReLU(inplace=True)]
                 in_channel = cfg
 
         self.feature = nn.Sequential(*vgg_layers)
@@ -95,7 +95,7 @@ class VGGNet(nn.Module):
         """
         feature = self.feature(input_data)
         feature_ = feature.view(-1, 2048)
-        print(feature_.shape)
+        # print(feature_.shape)
         soft_result = self.classifier(feature_)
         restore = self.restore(feature)
         return [feature, soft_result, restore]

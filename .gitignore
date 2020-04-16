@@ -2,3 +2,4 @@ __pycache__
 dataset.log
 .DS_Store
 .idea
+.pth
