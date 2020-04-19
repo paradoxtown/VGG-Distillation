@@ -22,8 +22,6 @@ def load_s_model(args, model, with_module=True):
     logging.info('------------')
     if not os.path.exists(args.s_ckpt_path):
         os.makedirs(args.s_ckpt_path)
-    if args.is_student_load_imgnet:
-        pass
 
 
 def load_t_model(model, ckpt_path):

@@ -86,7 +86,7 @@ def _criterion_parallel_apply(modules, inputs, targets, kwargs_tup=None, devices
         grad_enabled = torch.is_grad_enabled()
 
     def _worker(i, module, input, target, kwargs, device=None):
-        #import pdb;pdb.set_trace()
+        # import pdb;pdb.set_trace()
         if torch_ver != "0.3":
             torch.set_grad_enabled(grad_enabled)
         if device is None:

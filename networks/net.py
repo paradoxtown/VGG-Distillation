@@ -1,17 +1,19 @@
 import torch.nn as nn
 
+"""
+teacher_arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
+student_arch = [32, 32, 32, 'M', 48, 48, 48, 48, 'M', 64, 64, 64, 64, 'M']
+"""
+
 
 class SimpleNet(nn.Module):
-    """
-    arch = [32, 32, 32, 'M', 48, 48, 48, 48, 'M', 64, 64, 64, 64, 'M']
-    """
     def __init__(self, cfgs, num_classes):
         super(SimpleNet, self).__init__()
         self.num_classes = num_classes
-        s_layers = []
-        in_channel = 3
 
         # down sampling
+        s_layers = []
+        in_channel = 3
         for cfg in cfgs:
             if cfg == 'M':
                 s_layers += [nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))]
@@ -33,7 +35,7 @@ class SimpleNet(nn.Module):
         self.restore = nn.Sequential(*up_layers)
 
         self.classifier = nn.Sequential(
-            nn.Linear(in_features=64 * 4 * 4, out_features=4096),
+            nn.Linear(in_features=64 * 4 * 4, out_features=256),
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(256, 256),
@@ -45,7 +47,8 @@ class SimpleNet(nn.Module):
 
     def forward(self, input_data):
         feature = self.feature(input_data)
-        soft_result = self.classifier(feature)
+        feature_ = feature.view(-1, 1024)
+        soft_result = self.classifier(feature_)
         restore = self.restore(feature)
         return [feature, soft_result, restore]
 
@@ -86,13 +89,10 @@ class VGGNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout(),
             nn.Linear(256, 10),
-            # nn.Softmax(dim=1)
+            nn.Softmax(dim=1)
         )
 
     def forward(self, input_data):
-        """
-        arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
-        """
         feature = self.feature(input_data)
         feature_ = feature.view(-1, 2048)
         # print(feature_.shape)

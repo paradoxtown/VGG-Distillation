@@ -5,3 +5,5 @@ dataset.log
 *.pth
 model_frame.txt
 output.log
+test.py
+check.py
