@@ -1,9 +1,10 @@
-from networks.net import SimpleNet
+# from networks.net import SimpleNet
+from networks.net import VGGNet
 from torch.utils import data
 import torchvision
 import torchvision.transforms as transforms
 import torch
-import os
+# import os
 
 transform_test = transforms.Compose([
     transforms.ToTensor(),
@@ -14,14 +15,14 @@ testset = torchvision.datasets.CIFAR10(root='../cifar10', train=False, download=
 testloader = data.DataLoader(testset, batch_size=32,
                              shuffle=False, num_workers=2)
 
-files = os.listdir('./checkpoint/distill')
-PATH = './checkpoint/distill/' + files[-1]
+# files = os.listdir('./checkpoint')
+PATH = '/home/jinze/vgg_distillation/checkpoint/ckpt_1587386983_100.pth'
 print(PATH)
-# teacher_arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
-student_arch = [32, 32, 32, 'M', 48, 48, 48, 48, 'M', 64, 64, 64, 64, 'M']
+teacher_arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
+# student_arch = [32, 32, 32, 'M', 48, 48, 48, 48, 'M', 64, 64, 64, 64, 'M']
 
-# net = VGGNet(teacher_arch, 10)
-net = SimpleNet(student_arch, 10)
+net = VGGNet(teacher_arch, 10)
+# net = SimpleNet(student_arch, 10)
 net.load_state_dict(torch.load(PATH))
 class_correct = list(0. for i in range(10))
 class_total = list(0. for i in range(10))
@@ -42,6 +43,6 @@ accuracy = 0
 total = 0
 for i in range(10):
     accuracy += 100 * class_correct[i] / class_total[i]
-    print('Accuracy of %5s : %2d %%' % (
+    print('Accuracy of %5s : %.4f %%' % (
         classes[i], 100 * class_correct[i] / class_total[i]))
-print('Average Accuracy: %2d %%' % (accuracy / 10))
+print('Average Accuracy: %.4f %%' % (accuracy / 10))
