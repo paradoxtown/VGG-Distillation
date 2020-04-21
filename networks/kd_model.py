@@ -80,7 +80,7 @@ class NetModel:
         l_ce = 0.1 * self.criterion_ce(self.preds_s[1], self.labels)
         self.loss_ce = l_ce.item()
         loss += l_ce
-        l_up = self.criterion_up(self.preds_s[2], self.images)
+        l_up = 0.2 * self.criterion_up(self.preds_s[2], self.images)
         self.loss_up = l_up.item()
         loss += l_up
         if args.pi:
