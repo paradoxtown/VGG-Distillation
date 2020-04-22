@@ -52,3 +52,11 @@ class CriterionForDistribution(nn.Module):
         loss /= steps
         loss = - loss
         return loss
+
+
+class CriterionFSP(nn.Module):
+    def __init__(self):
+        super(CriterionFSP, self).__init__()
+
+    def forward(self, perds_s, preds_t):
+        pass
