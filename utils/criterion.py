@@ -58,5 +58,22 @@ class CriterionFSP(nn.Module):
     def __init__(self):
         super(CriterionFSP, self).__init__()
 
-    def forward(self, perds_s, preds_t):
+    def forward(self, preds_s, preds_t):
         pass
+
+
+class CriterionHT(nn.Module):
+    def __init__(self):
+        super(CriterionHT, self).__init__()
+        self.l2 = nn.MSELoss()
+
+    def forward(self, guided_ws, hint_ws):
+        batch_s = guided_ws.size(0)
+        batch_t = hint_ws.size(0)
+        assert batch_s == batch_t, 'the batch size of student is not insistance with teacher'
+        steps = batch_s
+        loss = 0.0
+        for s in range(steps):
+            loss += 0.5 * self.l2(guided_ws[s], hint_ws[s])
+        loss /= steps
+        return loss

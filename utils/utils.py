@@ -18,10 +18,14 @@ def to_tuple_str(str_first, gpu_num, str_ind):
     return tmp
 
 
-def load_s_model(args, model, with_module=True):
+def load_s_model(model, ckpt_path):
+    logging.info("------------")
+    if os.path.exists(ckpt_path):
+        model.load_state_dict(torch.load(ckpt_path))
+        logging.info('load' + str(ckpt_path))
+    else:
+        logging.info('=> no student checkpoint find')
     logging.info('------------')
-    if not os.path.exists(args.s_ckpt_path):
-        os.makedirs(args.s_ckpt_path)
 
 
 def load_t_model(model, ckpt_path):
@@ -81,6 +85,19 @@ def sim_dis_compute(f_s, f_t):
     sim_dis = sim_err.sum()
     return sim_dis
 
+
+def build_graph(f1, f2):
+    h = f1.size(1)
+    w = f1.size(2)
+    m = f1.size(0)
+    n = f2.size(0)
+    g = []
+    for i in range(m):
+        r = []
+        for j in range(n):
+            r.append(torch.sum(torch.mul(f1[i], f2[j])) / (h * w))
+        g.append(r)
+    return g
 
 # if __name__ == '__main__':
 #     net_arch16 = [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512,
