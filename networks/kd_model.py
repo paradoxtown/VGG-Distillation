@@ -75,9 +75,10 @@ class NetModel:
     def student_backward(self):
         args = self.args
         loss = 0.0
-        l_ce = 0.1 * self.criterion_ce(self.preds_s[1], self.labels)
-        self.loss_ce = l_ce.item()
-        loss += l_ce
+        if args.ce:
+            l_ce = args.lambda_ce * self.criterion_ce(self.preds_s[2], self.labels)
+            self.loss_ce = l_ce.item()
+            loss += l_ce
         if args.it:
             l_it = args.lambda_it * self.criterion_for_distribution(self.preds_s[2], self.preds_t[2])
             self.loss_it = l_it.item()
@@ -96,15 +97,22 @@ class NetModel:
         self.optimizer.step()
 
     def evaluate_model(self, total, correct):
-        _, predicted = self.preds_s[1].max(1)
+        _, predicted = self.preds_s[2].max(1)
         self.total = total + self.labels.size(0)
         self.correct = correct + predicted.eq(self.labels).sum().item()
         self.acc = self.correct / self.total
         return self.total, self.correct
 
     def print_info(self, epoch, step):
-        print('[%d, %5d] loss: %.3f, loss_ce: %.3f, acc: %.3f%%' %
-              (epoch + 1, step + 1, self.loss, self.loss_ce, 100.*self.acc))
+        if self.args.it:
+            print('[%2d, %5d] loss: %.3f, loss_ce: %.3f, loss_it: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_it, 100.*self.acc))
+        elif self.args.ce:
+            print('[%d, %5d] loss: %.3f, loss_ce: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, 100.*self.acc))
+        else:
+            print('[%d, %5d] loss: %.3f, loss_ht: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ht, 100.*self.acc))
 
     def save_ckpt(self, time, epoch):
         torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc))

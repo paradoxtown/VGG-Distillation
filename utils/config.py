@@ -25,8 +25,10 @@ class Config:
         parser.add_argument("--pi", type=str2bool, default='False', help="is pixel wise loss using or not")
         parser.add_argument("--it", type=str2bool, default='True', help="is inter model loss using or not")
         parser.add_argument("--ht", type=str2bool, default='True', help="is ht model loss using or not")
+        parser.add_argument("--ce", type=str2bool, default='False', help="is ce loss using or not")
         parser.add_argument("--lambda-ht", type=float, default=1.0, help="lambda_ht")
         parser.add_argument("--lambda-it", type=float, default=1.0, help="lambda_it")
+        parser.add_argument("--lambda-ce", type=float, default=0.1, help="lambda_ce")
         parser.add_argument("--lr", type=float, default=1e-2, help="learning rate")
         args = parser.parse_args()
         return args
