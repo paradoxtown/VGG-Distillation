@@ -19,53 +19,30 @@ def to_tuple_str(str_first, gpu_num, str_ind):
 
 
 def load_s_model(model, ckpt_path):
-    logging.info("------------")
+    print("------------")
     if os.path.exists(ckpt_path):
         model.load_state_dict(torch.load(ckpt_path))
-        logging.info('load' + str(ckpt_path))
+        print('load ' + str(ckpt_path))
     else:
-        logging.info('=> no student checkpoint find')
-    logging.info('------------')
+        print('=> no student checkpoint find')
+    print('------------')
 
 
 def load_t_model(model, ckpt_path):
-    logging.info("------------")
+    print("------------")
     if os.path.exists(ckpt_path):
         model.load_state_dict(torch.load(ckpt_path))
-        logging.info('load' + str(ckpt_path))
+        print('load' + str(ckpt_path))
     else:
-        logging.info('=> no teacher checkpoint find')
-    logging.info('------------')
-
-
-def load_d_model(args, model, with_module=True):
-    logging.info("------------")
-    if args.D_resume:
-        if not os.path.exists(args.D_ckpt_path):
-            os.makedirs(args.D_ckpt_path)
-        file = args.D_ckpt_path + '/model_best.pth.tar'
-        if os.path.isfile(file):
-            checkpoint = torch.load(file)
-            args.start_epoch = checkpoint['epoch']
-            args.best_mean_IU = checkpoint['best_mean_IU']
-            state_dict = checkpoint['state_dict']
-            if not with_module:
-                new_state_dict = {k[7:]: v for k, v in state_dict.items()}
-            else:
-                new_state_dict = state_dict
-            model.load_state_dict(new_state_dict)
-            logging.info("=> loaded checkpoint '{}' (epoch {})".format(
-                file, checkpoint['epoch']))
-        else:
-            logging.info("=> checkpoint '{}' does not exit".format(file))
-    logging.info("------------")
+        print('=> no teacher checkpoint find')
+    print('------------')
 
 
 def print_model_parm_nums(model, string):
     b = []
     for param in model.parameters():
         b.append(param.numel())
-    logging.info(string + ': Number of params: %.2fM', sum(b) / 1e6)
+    print(string + ': Number of params: %.2fM' % (sum(b) / 1e6))
 
 
 def l2(feat):

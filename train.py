@@ -32,5 +32,5 @@ for epoch in range(args.epoches):
         total, correct = model.evaluate_model(total, correct)
         if i % 100 == 99:
             model.print_info(epoch, i)
-    if epoch % 5 == 4:
+    if epoch % 10 == 9:
         model.save_ckpt(int(time.time()), epoch)

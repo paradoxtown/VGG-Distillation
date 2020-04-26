@@ -32,7 +32,12 @@ class NetModel:
         # self.optimizer = optim.SGD({'params': filter(lambda p: p.requires_grad, self.student.parameters()),
         #                             'initial_lr': args.lr}, args.lr, momentum=args.momentum,
         #                             weight_decay=args.weight_decay)
+
+        # regressor_params = list(map(id, self.student.regressor.parameters()))
+        # base_params = filter(lambda p: id(p) not in regressor_params, self.student.parameters())
+        # self.optimizer = optim.SGD(base_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
         self.optimizer = optim.SGD(self.student.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        # self.optimizer = optim.RMSprop(self.student.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
 
         # criterion cross entropy + soft-target distribution align + HT
         self.criterion_ce = nn.CrossEntropyLoss()
@@ -111,8 +116,11 @@ class NetModel:
             print('[%d, %5d] loss: %.3f, loss_ce: %.3f, acc: %.3f%%' %
                   (epoch + 1, step + 1, self.loss, self.loss_ce, 100.*self.acc))
         else:
-            print('[%d, %5d] loss: %.3f, loss_ht: %.3f, acc: %.3f%%' %
-                  (epoch + 1, step + 1, self.loss, self.loss_ht, 100.*self.acc))
+            print('[%d, %5d] loss: %.3f, loss_ht: %.3f' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ht))
 
     def save_ckpt(self, time, epoch):
-        torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc))
+        if not self.args.ht:
+            torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc))
+        else:
+            torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}.pth'.format(time, epoch))
