@@ -99,8 +99,7 @@ class VGGNet(nn.Module):
             nn.Linear(256, 256),
             nn.ReLU(inplace=True),
             nn.Dropout(),
-            nn.Linear(256, 10),
-            nn.Softmax(dim=1)
+            nn.Linear(256, 10)
         )
 
     def forward(self, input_data):

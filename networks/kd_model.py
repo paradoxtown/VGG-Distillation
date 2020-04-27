@@ -120,7 +120,11 @@ class NetModel:
                   (epoch + 1, step + 1, self.loss, self.loss_ht))
 
     def save_ckpt(self, time, epoch):
+        ckpt_path = ''
         if not self.args.ht:
-            torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc))
+            ckpt_path = './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc)
+            torch.save(self.student.state_dict(), ckpt_path)
         else:
-            torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}.pth'.format(time, epoch))
+            ckpt_path = './checkpoint/distill/ckpt_{}_{}.pth'.format(time, epoch)
+            torch.save(self.student.state_dict(), ckpt_path)
+        return ckpt_path

@@ -16,7 +16,7 @@ testloader = data.DataLoader(testset, batch_size=32,
                              shuffle=False, num_workers=2)
 
 # files = os.listdir('./checkpoint')
-PATH = '/home/jinze/vgg_distillation/checkpoint/distill/ckpt_1587656720_99_0.9163.pth'
+PATH = '/home/jinze/vgg_distillation/checkpoint/ckpt_1587988162_200.pth'
 print(PATH)
 
 is_teacher = False
@@ -24,12 +24,15 @@ if is_teacher:
     net = VGGNet(10)
 else:
     net = SimpleNet(10)
+net.cuda()
 net.load_state_dict(torch.load(PATH))
+net.eval()
 class_correct = list(0. for i in range(10))
 class_total = list(0. for i in range(10))
 with torch.no_grad():
     for dat in testloader:
         images, labels = dat
+        images, labels = images.cuda(), labels.cuda()
         outputs = net(images)
         _, predicted = torch.max(outputs[2], 1)
         c = (predicted == labels).squeeze()
