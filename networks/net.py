@@ -49,8 +49,7 @@ class SimpleNet(nn.Module):
             nn.Linear(256, 256),
             nn.ReLU(inplace=True),
             nn.Dropout(),
-            nn.Linear(256, 10),
-            nn.Softmax(dim=1)
+            nn.Linear(256, 10)
         )
 
     def forward(self, input_data):
@@ -58,8 +57,9 @@ class SimpleNet(nn.Module):
         feature = self.feature2(guided)
         guided = self.regressor(guided)
         feature_ = feature.view(-1, 1024)
-        soft_result = self.classifier(feature_)
-        return [guided, feature, soft_result]
+        class_info = self.classifier(feature_)
+        soft_result = nn.Softmax(dim=1)(class_info)
+        return [guided, soft_result, class_info]
 
 
 class VGGNet(nn.Module):
@@ -106,8 +106,9 @@ class VGGNet(nn.Module):
         hint = self.feature1(input_data)
         feature = self.feature2(hint)
         feature_ = feature.view(-1, 2048)
-        soft_result = self.classifier(feature_)
-        return [hint, feature, soft_result]
+        class_info = self.classifier(feature_)
+        soft_result = nn.Softmax(dim=1)(class_info)
+        return [hint, soft_result, class_info]
 
 
 if __name__ == '__main__':

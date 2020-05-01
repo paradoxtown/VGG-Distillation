@@ -12,14 +12,13 @@ transform_test = transforms.Compose([
 ])
 
 testset = torchvision.datasets.CIFAR10(root='../cifar10', train=False, download=True, transform=transform_test)
-testloader = data.DataLoader(testset, batch_size=32,
-                             shuffle=False, num_workers=2)
+testloader = data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=2)
 
 # files = os.listdir('./checkpoint')
-PATH = '/home/jinze/vgg_distillation/checkpoint/ckpt_1587988162_200.pth'
+PATH = '/home/jinze/vgg_distillation/checkpoint/ckpt_120_t.pth'
 print(PATH)
 
-is_teacher = False
+is_teacher = True
 if is_teacher:
     net = VGGNet(10)
 else:

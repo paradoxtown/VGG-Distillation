@@ -85,7 +85,7 @@ class NetModel:
             self.loss_ce = l_ce.item()
             loss += l_ce
         if args.it:
-            l_it = args.lambda_it * self.criterion_for_distribution(self.preds_s[2], self.preds_t[2])
+            l_it = args.lambda_it * self.criterion_for_distribution(self.preds_s[1], self.preds_t[1])
             self.loss_it = l_it.item()
             loss += l_it
         if args.ht:
@@ -122,9 +122,11 @@ class NetModel:
     def save_ckpt(self, time, epoch):
         ckpt_path = ''
         if not self.args.ht:
-            ckpt_path = './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc)
+            # ckpt_path = './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch+1, self.acc)
+            ckpt_path = './checkpoint/distill/ckpt_{}_it.pth'.format(epoch+1)
             torch.save(self.student.state_dict(), ckpt_path)
         else:
-            ckpt_path = './checkpoint/distill/ckpt_{}_{}.pth'.format(time, epoch)
+            # ckpt_path = './checkpoint/distill/ckpt_{}_{}.pth'.format(time, epoch+1)
+            ckpt_path = './checkpoint/distill/ckpt_{}_ht.pth'.format(epoch+1)
             torch.save(self.student.state_dict(), ckpt_path)
         return ckpt_path

@@ -7,6 +7,10 @@ import torchvision
 import torchvision.transforms as transforms
 import torch
 import time
+from utils.config import Config
+
+args = Config().initialize()
+print(args)
 
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -17,24 +21,25 @@ transform_train = transforms.Compose([
 
 trainset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True, transform=transform_train)
 trainloader = data.DataLoader(trainset, batch_size=32, shuffle=True, num_workers=2)
-PATH = './checkpoint/ckpt_{}_{}.pth'
 
 print(len(trainloader))
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 is_teacher = False
 if is_teacher:
+    PATH = './checkpoint/ckpt_{}_t.pth'
     net = VGGNet(10)
 else:
+    PATH = './checkpoint/ckpt_{}_s.pth'
     net = SimpleNet(10)
-    net.load_state_dict(torch.load('/home/jinze/vgg_distillation/checkpoint/ckpt_1587984581_90.pth'))
+    if args.resume:
+        net.load_state_dict(torch.load(args.s_ckpt_path))
 net.cuda()
 
 loss_ce = nn.CrossEntropyLoss()
-loss_up = nn.MSELoss()
-optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9, weight_decay=1.e-4)
+optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=1.e-4)
 
-for epoch in range(90, 200):  # loop over the dataset multiple times
+for epoch in range(args.start_epoch, args.start_epoch + args.epochs):  # loop over the dataset multiple times
 
     running_loss = 0.0
     running_l_ce = 0.0
@@ -69,6 +74,7 @@ for epoch in range(90, 200):  # loop over the dataset multiple times
             time1 = time.time()
             running_loss = 0.0
     if epoch % 10 == 9:
-        torch.save(net.state_dict(), PATH.format(int(time.time()), epoch + 1))
+        # torch.save(net.state_dict(), PATH.format(int(time.time()), epoch + 1))
+        torch.save(net.state_dict(), PATH.format(epoch + 1))
 
 print('Finished Training')
