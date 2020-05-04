@@ -1,5 +1,6 @@
 from networks.net import SimpleNet
 from networks.net import VGGNet
+from networks.net import VGGNet16
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils import data
@@ -27,8 +28,13 @@ classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship'
 
 is_teacher = False
 if is_teacher:
-    PATH = './checkpoint/ckpt_{}_t.pth'
-    net = VGGNet(10)
+    is_16 = True
+    if is_16:
+        PATH = './checkpoint/ckpt_vgg_{}_t.pth'
+        net = VGGNet16(10)
+    else:
+        PATH = './checkpoint/ckpt_{}_t.pth'
+        net = VGGNet(10)
 else:
     PATH = './checkpoint/ckpt_{}_s.pth'
     net = SimpleNet(10)

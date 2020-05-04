@@ -15,10 +15,10 @@ testset = torchvision.datasets.CIFAR10(root='../cifar10', train=False, download=
 testloader = data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=2)
 
 # files = os.listdir('./checkpoint')
-PATH = '/home/jinze/vgg_distillation/checkpoint/ckpt_120_t.pth'
+PATH = '/home/jinze/vgg_distillation/checkpoint/distill/ckpt_200_it.pth'
 print(PATH)
 
-is_teacher = True
+is_teacher = False
 if is_teacher:
     net = VGGNet(10)
 else:
