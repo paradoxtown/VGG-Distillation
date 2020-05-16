@@ -1,5 +1,6 @@
-from networks.net import SimpleNet
-from networks.net import VGGNet
+from networks.net import SimpleNet, SimpleNet16
+from networks.net import VGGNet, VGGNet16
+from networks.net import SimpleNet16s, VGGNet16s
 from torch.utils import data
 import torchvision
 import torchvision.transforms as transforms
@@ -15,14 +16,29 @@ testset = torchvision.datasets.CIFAR10(root='../cifar10', train=False, download=
 testloader = data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=2)
 
 # files = os.listdir('./checkpoint')
-PATH = '/home/jinze/vgg_distillation/checkpoint/distill/ckpt_200_it.pth'
+PATH = '/content/drive/My Drive/vgg16_distillation/checkpoint/distill/sp/ckpt_160_sp.pth'
 print(PATH)
 
 is_teacher = False
+is_16 = True
+is_16s = True
 if is_teacher:
-    net = VGGNet(10)
+    if is_16:
+        if is_16s:
+            net = VGGNet16s(10)
+        else:
+            net = VGGNet16(10)
+    else:
+        PATH = './checkpoint/ckpt_{}_t.pth'
+        net = VGGNet(10)
 else:
-    net = SimpleNet(10)
+    if is_16:
+        if is_16s:
+            net = SimpleNet16s(10)
+        else:
+            net = SimpleNet16(10)
+    else:
+        net = SimpleNet(10)
 net.cuda()
 net.load_state_dict(torch.load(PATH))
 net.eval()
@@ -33,7 +49,7 @@ with torch.no_grad():
         images, labels = dat
         images, labels = images.cuda(), labels.cuda()
         outputs = net(images)
-        _, predicted = torch.max(outputs[2], 1)
+        _, predicted = torch.max(outputs[-2], 1)
         c = (predicted == labels).squeeze()
         for i in range(4):
             label = labels[i]

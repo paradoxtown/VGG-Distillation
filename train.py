@@ -1,15 +1,27 @@
 from networks.kd_model import NetModel
 from torch.utils import data
+import numpy as np
+import torch
 import torchvision
 import torchvision.transforms as transforms
 import warnings
 import time
+import random
 from utils.config import Config
 
 args = Config().initialize()
 print(args)
 
 warnings.filterwarnings("ignore")
+
+def setup_seed(seed):
+     torch.manual_seed(seed)
+     torch.cuda.manual_seed_all(seed)
+     np.random.seed(seed)
+     random.seed(seed)
+     torch.backends.cudnn.deterministic = True
+
+setup_seed(666)
 
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -19,7 +31,7 @@ transform_train = transforms.Compose([
 ])
 
 trainset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True, transform=transform_train)
-trainloader = data.DataLoader(trainset, batch_size=32, shuffle=True, num_workers=2)
+trainloader = data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=2)
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 model = NetModel(args)
@@ -27,6 +39,7 @@ for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
     t1 = time.time()
     total = 0
     correct = 0
+    model.adjust_learning_rate(model.optimizer, epoch)
     for i, dat in enumerate(trainloader, 0):
         model.set_input(dat)
         model.optimize_parameters()

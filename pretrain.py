@@ -1,6 +1,6 @@
-from networks.net import SimpleNet
-from networks.net import VGGNet
-from networks.net import VGGNet16
+from networks.net import VGGNet, SimpleNet
+from networks.net import VGGNet16, SimpleNet16
+from networks.net import VGGNet16s, SimpleNet16s
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils import data
@@ -9,6 +9,7 @@ import torchvision.transforms as transforms
 import torch
 import time
 from utils.config import Config
+from utils.utils import print_model_parm_nums
 
 args = Config().initialize()
 print(args)
@@ -26,27 +27,61 @@ trainloader = data.DataLoader(trainset, batch_size=32, shuffle=True, num_workers
 print(len(trainloader))
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-is_teacher = False
+is_teacher = True
+is_16 = True
+is_16s = True
 if is_teacher:
-    is_16 = True
     if is_16:
-        PATH = './checkpoint/ckpt_vgg_{}_t.pth'
-        net = VGGNet16(10)
+        if is_16s:
+            PATH = './checkpoint/ckpt_vggs_{}_t.pth'
+            net = VGGNet16s(10)
+        else:
+            PATH = './checkpoint/ckpt_vgg_{}_t.pth'
+            net = VGGNet16(10)
     else:
         PATH = './checkpoint/ckpt_{}_t.pth'
         net = VGGNet(10)
+    if args.resume:
+        net.load_state_dict(torch.load(args.t_ckpt_path))
+        print("load {} successfully".format(args.t_ckpt_path))
 else:
-    PATH = './checkpoint/ckpt_{}_s.pth'
-    net = SimpleNet(10)
+    if is_16:
+        if is_16s:
+            PATH = './checkpoint/ckpt_vggs_{}_s.pth'
+            net = SimpleNet16s(10)
+            print('SimpleNet16s')
+        else:
+            PATH = './checkpoint/ckpt_vgg_{}_s.pth'
+            net = SimpleNet16(10)
+    else:
+        PATH = './checkpoint/ckpt_{}_s.pth'
+        net = SimpleNet(10)
     if args.resume:
         net.load_state_dict(torch.load(args.s_ckpt_path))
+        print("load {} successfully".format(args.s_ckpt_path))
 net.cuda()
+print_model_parm_nums(net, "")
 
 loss_ce = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=1.e-4)
 
-for epoch in range(args.start_epoch, args.start_epoch + args.epochs):  # loop over the dataset multiple times
+def adjust_learning_rate(epoch):
+        #     args = self.args
+        #     lr = self.lr_poly(base_lr, i_iter, args.num_steps, args.power)
+        #     optimizer.param_groups[0]['lr'] = lr
+        #     return lr
+        scale = 0.1
+        lr_list = [0.1] * 100
+        lr_list += [0.1 * scale] * 50
+        lr_list += [0.1 * scale * scale] * 50
 
+        lr = lr_list[epoch]
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
+
+for epoch in range(0, 200):  # loop over the dataset multiple times
+
+    adjust_learning_rate(epoch)
     running_loss = 0.0
     running_l_ce = 0.0
     total = 0
@@ -62,12 +97,12 @@ for epoch in range(args.start_epoch, args.start_epoch + args.epochs):  # loop ov
 
         # forward + backward + optimize
         outputs = net(inputs)
-        loss = 0.1 * loss_ce(outputs[2], labels)
+        loss = 0.1 * loss_ce(outputs[-2], labels)
         loss.backward()
         optimizer.step()
 
         # evaluation train
-        _, predicted = outputs[2].max(1)
+        _, predicted = outputs[-2].max(1)
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
 
