@@ -70,6 +70,7 @@ class CriterionLogits(nn.Module):
         loss = F.mse_loss(preds_s, preds_t)
         return loss
 
+
 class CriterionSP(nn.Module):
     def __init__(self):
         super(CriterionSP, self).__init__()

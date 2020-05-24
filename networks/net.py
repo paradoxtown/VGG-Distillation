@@ -204,9 +204,9 @@ class VGGNet16(nn.Module):
         return [hint, soft_result, class_info, hint, feature]
 
 
-class SimpleNet16s(nn.Module):
+class SimpleNet16A(nn.Module):
     def __init__(self, num_classes):
-        super(SimpleNet16s, self).__init__()
+        super(SimpleNet16A, self).__init__()
         self.num_classes = num_classes
         self.in_channel = 3
 
@@ -243,6 +243,136 @@ class SimpleNet16s(nn.Module):
         o4 = self.m4(o3)
         o5 = self.m5(o4)
         feature = o5.view(o5.size(0), -1)
+        class_info = self.classifier(feature)
+        soft_target = nn.Softmax(dim=1)(class_info)
+        return [o1, o2, o3, o4, o5, guided, feature, class_info, soft_target]
+
+
+class SimpleNet16B(nn.Module):
+    def __init__(self, num_classes):
+        super(SimpleNet16B, self).__init__()
+        self.num_classes = num_classes
+        self.in_channel = 3
+
+        self.m1 = nn.Sequential(*self.make_layer([32, 32, 'M']))
+        self.m2 = nn.Sequential(*self.make_layer([64, 64, 'M']))
+        self.m3 = nn.Sequential(*self.make_layer([128, 128, 128, 'M']))
+        self.m4 = nn.Sequential(*self.make_layer([256, 256, 256, 'M']))
+        self.m5 = nn.Sequential(*self.make_layer([256, 256, 256, 'M']))
+
+        self.regressor = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True)
+        )
+
+        self.classifier = nn.Linear(256, 10)
+
+    def make_layer(self, cfgs):
+        layers = []
+        for cfg in cfgs:
+            if cfg == 'M':
+                layers += [nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))]
+            else:
+                conv2d = nn.Conv2d(in_channels=self.in_channel, out_channels=cfg, kernel_size=3, padding=1)
+                layers += [conv2d, nn.BatchNorm2d(cfg), nn.ReLU(inplace=True)]
+                self.in_channel = cfg
+        return layers
+
+    def forward(self, input_data):
+        o1 = self.m1(input_data)
+        o2 = self.m2(o1)
+        o3 = self.m3(o2)
+        guided = self.regressor(o3)
+        o4 = self.m4(o3)
+        o5 = self.m5(o4)
+        feature = o5.view(o5.size(0), -1)
+        class_info = self.classifier(feature)
+        soft_target = nn.Softmax(dim=1)(class_info)
+        return [o1, o2, o3, o4, o5, guided, feature, class_info, soft_target]
+
+
+class SimpleNet16C(nn.Module):
+    def __init__(self, num_classes):
+        super(SimpleNet16C, self).__init__()
+        self.num_classes = num_classes
+        self.in_channel = 3
+
+        self.m1 = nn.Sequential(*self.make_layer([16, 16, 'M']))
+        self.m2 = nn.Sequential(*self.make_layer([32, 32, 'M']))
+        self.m3 = nn.Sequential(*self.make_layer([64, 64, 64, 'M']))
+        self.m4 = nn.Sequential(*self.make_layer([128, 128, 128, 'M']))
+
+        self.regressor = nn.Sequential(
+            nn.Conv2d(in_channels=64, out_channels=256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True)
+        )
+
+        self.classifier = nn.Linear(4*128, 10)
+
+    def make_layer(self, cfgs):
+        layers = []
+        for cfg in cfgs:
+            if cfg == 'M':
+                layers += [nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))]
+            else:
+                conv2d = nn.Conv2d(in_channels=self.in_channel, out_channels=cfg, kernel_size=3, padding=1)
+                layers += [conv2d, nn.BatchNorm2d(cfg), nn.ReLU(inplace=True)]
+                self.in_channel = cfg
+        return layers
+
+    def forward(self, input_data):
+        o1 = self.m1(input_data)
+        o2 = self.m2(o1)
+        o3 = self.m3(o2)
+        guided = self.regressor(o3)
+        o4 = self.m4(o3)
+        feature = o4.view(o4.size(0), -1)
+        class_info = self.classifier(feature)
+        soft_target = nn.Softmax(dim=1)(class_info)
+        return [o1, o2, o3, o4, 0, guided, feature, class_info, soft_target]
+
+
+class SimpleNet16D(nn.Module):
+    def __init__(self, num_classes):
+        super(SimpleNet16D, self).__init__()
+        self.num_classes = num_classes
+        self.in_channel = 3
+
+        self.m1 = nn.Sequential(*self.make_layer([32, 'M']))
+        self.m2 = nn.Sequential(*self.make_layer([64, 'M']))
+        self.m3 = nn.Sequential(*self.make_layer([128, 128, 'M']))
+        self.m4 = nn.Sequential(*self.make_layer([256, 256, 'M']))
+        self.m5 = nn.Sequential(*self.make_layer([256, 256, 'M']))
+
+        self.regressor = nn.Sequential(
+            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(inplace=True)
+        )
+
+        self.classifier = nn.Linear(256, 10)
+
+    def make_layer(self, cfgs):
+        layers = []
+        for cfg in cfgs:
+            if cfg == 'M':
+                layers += [nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2))]
+            else:
+                conv2d = nn.Conv2d(in_channels=self.in_channel, out_channels=cfg, kernel_size=3, padding=1)
+                layers += [conv2d, nn.BatchNorm2d(cfg), nn.ReLU(inplace=True)]
+                self.in_channel = cfg
+        return layers
+
+    def forward(self, input_data):
+        o1 = self.m1(input_data)
+        o2 = self.m2(o1)
+        o3 = self.m3(o2)
+        o4 = self.m4(o3)
+        o5 = self.m5(o4)
+        guided = self.regressor(o3)
+        feature = o5.view(o3.size(0), -1)
         class_info = self.classifier(feature)
         soft_target = nn.Softmax(dim=1)(class_info)
         return [o1, o2, o3, o4, o5, guided, feature, class_info, soft_target]

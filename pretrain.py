@@ -1,6 +1,6 @@
 from networks.net import VGGNet, SimpleNet
-from networks.net import VGGNet16, SimpleNet16
-from networks.net import VGGNet16s, SimpleNet16s
+from networks.net import VGGNet16, SimpleNet16A
+from networks.net import VGGNet16s, SimpleNet16B, SimpleNet16C, SimpleNet16D
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils import data
@@ -21,20 +21,21 @@ transform_train = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
 ])
 
-trainset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True, transform=transform_train)
+# trainset = torchvision.datasets.CIFAR10(root='../cifar10', train=True, download=True, transform=transform_train)
+trainset = torchvision.datasets.CIFAR100(root='../cifar100', train=True, download=True, transform=transform_train)
 trainloader = data.DataLoader(trainset, batch_size=32, shuffle=True, num_workers=2)
 
 print(len(trainloader))
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-is_teacher = True
+is_teacher = False
 is_16 = True
 is_16s = True
 if is_teacher:
     if is_16:
         if is_16s:
             PATH = './checkpoint/ckpt_vggs_{}_t.pth'
-            net = VGGNet16s(10)
+            net = VGGNet16s(100)
         else:
             PATH = './checkpoint/ckpt_vgg_{}_t.pth'
             net = VGGNet16(10)
@@ -48,8 +49,8 @@ else:
     if is_16:
         if is_16s:
             PATH = './checkpoint/ckpt_vggs_{}_s.pth'
-            net = SimpleNet16s(10)
-            print('SimpleNet16s')
+            net = SimpleNet16A(100)
+            print('SimpleNet16C')
         else:
             PATH = './checkpoint/ckpt_vgg_{}_s.pth'
             net = SimpleNet16(10)

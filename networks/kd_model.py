@@ -18,7 +18,7 @@ class NetModel:
         self.args = args
         # device = args.device
 
-        student = net.SimpleNet16s(args.num_classes)
+        student = net.SimpleNet16A(args.num_classes)
         if args.load_student:
             load_s_model(student, args.s_ckpt_path)
         print_model_parm_nums(student, 'student_model')
@@ -114,11 +114,11 @@ class NetModel:
             loss = loss + l_lg
         if args.sp:
             # l_sp = args.lambda_sp * (self.criterion_sp(self.preds_s[3], self.preds_t[3]) + self.criterion_sp(self.preds_s[2], self.preds_t[2])) / 2.0
-            l_sp = args.lambda_sp * self.criterion_sp(self.preds_s[0], self.preds_t[0])
+            l_sp = args.lambda_sp * self.criterion_sp(self.preds_s[3], self.preds_t[3])
             self.loss_sp = l_sp.item()
             loss = loss + l_sp
         if args.at:
-            l_at = args.lambda_at * self.criterion_at(self.preds_s[1], self.preds_t[1])
+            l_at = args.lambda_at * self.criterion_at(self.preds_s[2], self.preds_t[2])
             self.loss_at = l_at.item()
             loss = loss + l_at
         if args.ht:

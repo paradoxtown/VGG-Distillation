@@ -1,6 +1,7 @@
 from networks.net import SimpleNet, SimpleNet16
 from networks.net import VGGNet, VGGNet16
-from networks.net import SimpleNet16s, VGGNet16s
+from networks.net import SimpleNet16A, VGGNet16s
+from networks.net import SimpleNet16B, SimpleNet16C, SimpleNet16D
 from torch.utils import data
 import torchvision
 import torchvision.transforms as transforms
@@ -16,7 +17,7 @@ testset = torchvision.datasets.CIFAR10(root='../cifar10', train=False, download=
 testloader = data.DataLoader(testset, batch_size=32, shuffle=False, num_workers=2)
 
 # files = os.listdir('./checkpoint')
-PATH = '/content/drive/My Drive/vgg16_distillation/checkpoint/distill/sp/ckpt_160_sp.pth'
+PATH = '/content/drive/My Drive/vgg16_distillation/checkpoint/distill/at/ckpt_160_at.pth'
 print(PATH)
 
 is_teacher = False
@@ -25,7 +26,7 @@ is_16s = True
 if is_teacher:
     if is_16:
         if is_16s:
-            net = VGGNet16s(10)
+            net = VGGNet16s(100)
         else:
             net = VGGNet16(10)
     else:
@@ -34,7 +35,7 @@ if is_teacher:
 else:
     if is_16:
         if is_16s:
-            net = SimpleNet16s(10)
+            net = SimpleNet16A(10)
         else:
             net = SimpleNet16(10)
     else:
