@@ -3,8 +3,9 @@ import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.nn as nn
 import networks.net as net
-from utils.utils import load_t_model, print_model_parm_nums
-from utils.criterion import CriterionForDistribution, CriterionPixelWise
+from utils.utils import load_t_model, print_model_parm_nums, load_s_model
+from utils.criterion import CriterionForDistribution, CriterionHT, \
+    CriterionSoftTarget, CriterionLogits, CriterionSP, CriterionAT
 
 
 class NetModel:
@@ -17,33 +18,43 @@ class NetModel:
         self.args = args
         # device = args.device
 
-        student_arch = [32, 32, 32, 'M', 48, 48, 48, 48, 'M', 64, 64, 64, 64, 'M']
-        student = net.SimpleNet(student_arch, args.num_classes)
-        # load_s_model(args, student, False)
+        student = net.SimpleNet16A(args.num_classes)
+        if args.load_student:
+            load_s_model(student, args.s_ckpt_path)
         print_model_parm_nums(student, 'student_model')
         self.student = student.cuda()
 
-        teacher_arch = [64, 64, 64, 'M', 96, 96, 96, 96, 'M', 128, 128, 128, 128, 'M']
-        teacher = net.VGGNet(teacher_arch, args.num_classes)
+        teacher = net.VGGNet16s(args.num_classes)
         load_t_model(teacher, args.t_ckpt_path)
         print_model_parm_nums(teacher, 'teacher_model')
         self.teacher = teacher.cuda()
 
         # todo
         # self.optimizer = optim.SGD({'params': filter(lambda p: p.requires_grad, self.student.parameters()),
-        #                             'initial_lr': args.lr}, args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-        self.optimizer = optim.SGD(self.student.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        #                             'initial_lr': args.lr}, args.lr, momentum=args.momentum,
+        #                             weight_decay=args.weight_decay)
 
-        # criterion cross entropy + soft-target distribution align + pixel-wise
+        # regressor_params = list(map(id, self.student.regressor.parameters()))
+        # base_params = filter(lambda p: id(p) not in regressor_params, self.student.parameters())
+        # self.optimizer = optim.SGD(base_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+        self.optimizer = optim.SGD(self.student.parameters(), lr=args.lr, momentum=args.momentum,
+                                   weight_decay=args.weight_decay, nesterov=True)
+
         self.criterion_ce = nn.CrossEntropyLoss()
-        self.criterion_up = nn.MSELoss()
         self.criterion_for_distribution = CriterionForDistribution()
-        self.criterion_pixel_wise = CriterionPixelWise()
+        self.criterion_st = CriterionSoftTarget()
+        self.criterion_ht = CriterionHT()
+        self.criterion_lg = CriterionLogits()
+        self.criterion_sp = CriterionSP()
+        self.criterion_at = CriterionAT()
 
         self.loss_ce = 0.0
-        self.loss_up = 0.0
-        self.loss_pi = 0.0
         self.loss_it = 0.0
+        self.loss_st = 0.0
+        self.loss_lg = 0.0
+        self.loss_sp = 0.0
+        self.loss_at = 0.0
+        self.loss_ht = 0.0
 
         self.total = 0
         self.correct = 0
@@ -63,11 +74,19 @@ class NetModel:
     # def lr_poly(base_lr, iteration, max_iter, power):
     #     return base_lr * ((1 - float(iteration) / max_iter) ** power)
 
-    # def adjust_learning_rate(self, base_lr, optimizer, i_iter):
-    #     args = self.args
-    #     lr = self.lr_poly(base_lr, i_iter, args.num_steps, args.power)
-    #     optimizer.param_groups[0]['lr'] = lr
-    #     return lr
+    def adjust_learning_rate(self, optimizer, epoch):
+        #     args = self.args
+        #     lr = self.lr_poly(base_lr, i_iter, args.num_steps, args.power)
+        #     optimizer.param_groups[0]['lr'] = lr
+        #     return lr
+        scale = 0.1
+        lr_list = [self.args.lr] * 100
+        lr_list += [self.args.lr * scale] * 50
+        lr_list += [self.args.lr * scale * scale] * 50
+
+        lr = lr_list[epoch - 1]
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = lr
 
     def forward(self):
         with torch.no_grad():
@@ -77,20 +96,35 @@ class NetModel:
     def student_backward(self):
         args = self.args
         loss = 0.0
-        l_ce = 0.1 * self.criterion_ce(self.preds_s[1], self.labels)
-        self.loss_ce = l_ce.item()
-        loss += l_ce
-        l_up = 0.2 * self.criterion_up(self.preds_s[2], self.images)
-        self.loss_up = l_up.item()
-        loss += l_up
-        if args.pi:
-            l_pi = args.lambda_pi * self.criterion_pixel_wise(self.preds_s[2], self.preds_t[2])
-            self.loss_pi = l_pi.item()
-            loss += l_pi
+        if args.ce:
+            l_ce = args.lambda_ce * self.criterion_ce(self.preds_s[-2], self.labels)
+            self.loss_ce = l_ce.item()
+            loss = loss + l_ce
         if args.it:
             l_it = args.lambda_it * self.criterion_for_distribution(self.preds_s[1], self.preds_t[1])
             self.loss_it = l_it.item()
-            loss += l_it
+            loss = loss + l_it
+        if args.st:
+            l_st = args.lambda_st * self.criterion_st(self.preds_s[-2], self.preds_t[-2])
+            self.loss_st = l_st.item()
+            loss = loss + l_st
+        if args.lg:
+            l_lg = args.lambda_lg * self.criterion_lg(self.preds_s[-2], self.preds_t[-2])
+            self.loss_lg = l_lg.item()
+            loss = loss + l_lg
+        if args.sp:
+            # l_sp = args.lambda_sp * (self.criterion_sp(self.preds_s[3], self.preds_t[3]) + self.criterion_sp(self.preds_s[2], self.preds_t[2])) / 2.0
+            l_sp = args.lambda_sp * self.criterion_sp(self.preds_s[3], self.preds_t[3])
+            self.loss_sp = l_sp.item()
+            loss = loss + l_sp
+        if args.at:
+            l_at = args.lambda_at * self.criterion_at(self.preds_s[2], self.preds_t[2])
+            self.loss_at = l_at.item()
+            loss = loss + l_at
+        if args.ht:
+            l_ht = args.lambda_ht * self.criterion_ht(self.preds_s[5], self.preds_t[5])
+            self.loss_ht = l_ht.item()
+            loss = loss + l_ht
         loss.backward()
         self.loss = loss.item()
 
@@ -101,15 +135,50 @@ class NetModel:
         self.optimizer.step()
 
     def evaluate_model(self, total, correct):
-        _, predicted = self.preds_s[1].max(1)
+        _, predicted = self.preds_s[-2].max(1)
         self.total = total + self.labels.size(0)
         self.correct = correct + predicted.eq(self.labels).sum().item()
         self.acc = self.correct / self.total
         return self.total, self.correct
 
     def print_info(self, epoch, step):
-        print('[%d, %5d] loss: %.3f, loss_ce: %.3f, loss_up: %.3f, acc: %.3f%%' %
-              (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_up, 100.*self.acc))
+        if self.args.it:
+            print('[%2d, %5d] loss: %.3f, loss_ce: %.3f, loss_it: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_it, 100. * self.acc))
+        elif self.args.st:
+            print('[%2d, %5d] loss: %.3f, loss_ce: %.3f, loss_st: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_st, 100. * self.acc))
+        elif self.args.lg:
+            print('[%2d, %5d] loss: %.3f, loss_ce: %.3f, loss_lg: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_lg, 100. * self.acc))
+        elif self.args.sp:
+            print('[%2d, %5d] loss: %.3f, loss_ce: %.3f, loss_sp: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_sp, 100. * self.acc))
+        elif self.args.at:
+            print('[%2d, %5d] loss: %.3f, loss_ce: %.3f, loss_at: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, self.loss_at, 100. * self.acc))
+        elif self.args.ce:
+            print('[%d, %5d] loss: %.3f, loss_ce: %.3f, acc: %.3f%%' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ce, 100. * self.acc))
+        else:
+            print('[%d, %5d] loss: %.3f, loss_ht: %.3f' %
+                  (epoch + 1, step + 1, self.loss, self.loss_ht))
 
     def save_ckpt(self, time, epoch):
-        torch.save(self.student.state_dict(), './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch, self.acc))
+        ckpt_path = ''
+        if self.args.st:
+            # ckpt_path = './checkpoint/distill/ckpt_{}_{}_{}.pth'.format(time, epoch+1, self.acc)
+            ckpt_path = './checkpoint/distill/st/ckpt_{}_st.pth'.format(epoch + 1)
+        elif self.args.lg:
+            ckpt_path = './checkpoint/distill/lg/ckpt_{}_lg.pth'.format(epoch + 1)
+        elif self.args.sp:
+            ckpt_path = './checkpoint/distill/sp/ckpt_{}_sp.pth'.format(epoch + 1)
+        elif self.args.at:
+            ckpt_path = './checkpoint/distill/at/ckpt_{}_at.pth'.format(epoch + 1)
+        elif self.args.it:
+            ckpt_path = './checkpoint/distill/it/ckpt_{}_it.pth'.format(epoch + 1)
+        elif self.args.ht:
+            # ckpt_path = './checkpoint/distill/ckpt_{}_{}.pth'.format(time, epoch+1)
+            ckpt_path = './checkpoint/distill/ht/ckpt_{}_ht.pth'.format(epoch + 1)
+        torch.save(self.student.state_dict(), ckpt_path)
+        return ckpt_path
