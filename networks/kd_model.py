@@ -29,14 +29,6 @@ class NetModel:
         print_model_parm_nums(teacher, 'teacher_model')
         self.teacher = teacher.cuda()
 
-        # todo
-        # self.optimizer = optim.SGD({'params': filter(lambda p: p.requires_grad, self.student.parameters()),
-        #                             'initial_lr': args.lr}, args.lr, momentum=args.momentum,
-        #                             weight_decay=args.weight_decay)
-
-        # regressor_params = list(map(id, self.student.regressor.parameters()))
-        # base_params = filter(lambda p: id(p) not in regressor_params, self.student.parameters())
-        # self.optimizer = optim.SGD(base_params, lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
         self.optimizer = optim.SGD(self.student.parameters(), lr=args.lr, momentum=args.momentum,
                                    weight_decay=args.weight_decay, nesterov=True)
 
